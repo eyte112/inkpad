@@ -1,0 +1,18 @@
+/* 深色模式语义色（温暖深灰） */
+.dark {
+  --s-bg: #1C1C1E;
+  --s-bg-gradient: linear-gradient(135deg, #181B22 0%, #1C1A24 25%, #221E1C 50%, #1C1A24 75%, #181B22 100%);
+  --s-card: rgba(44, 44, 46, 0.6);
+  --s-header: rgba(44, 44, 46, 0.65);
+  --s-menu: rgba(44, 44, 46, 0.88);
+  --s-text: #E8E8E8;
+  --s-muted: #9B9B9B;
+  --s-border: rgba(255, 255, 255, 0.08);
+
+  /* 编辑器专用（不透明） */
+  --s-editor: #2C2C2E;
+  --s-editor-soft: #252525;
+  --s-editor-area: #232323;
+  --s-editor-code: #3A3A3C;
+  --s-editor-border: #3A3A3C;
+}

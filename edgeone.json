@@ -1,0 +1,16 @@
+{
+  "name": "cloudnotepad",
+  "build": {
+    "command": "npm run build",
+    "output": "dist"
+  },
+  "functions": {
+    "directory": "functions"
+  },
+  "kv": [
+    {
+      "binding": "KV",
+      "namespace_id": "cloudnotepad-kv"
+    }
+  ]
+}

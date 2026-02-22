@@ -1,0 +1,19 @@
+/* 浅色模式语义色 */
+:root {
+  color-scheme: light dark;
+  --s-bg: #F7FAFA;
+  --s-bg-gradient: linear-gradient(135deg, #DEEAFC 0%, #E4E2F6 25%, #F2E6EC 50%, #E4E2F6 75%, #DEEAFC 100%);
+  --s-card: rgba(255, 255, 255, 0.6);
+  --s-header: rgba(255, 255, 255, 0.65);
+  --s-menu: rgba(255, 255, 255, 0.85);
+  --s-text: #1A2E35;
+  --s-muted: #64748B;
+  --s-border: rgba(226, 232, 240, 0.6);
+
+  /* 编辑器专用（不透明） */
+  --s-editor: #FFFFFF;
+  --s-editor-soft: #F8FAFC;
+  --s-editor-area: #FAFBFC;
+  --s-editor-code: #F1F5F9;
+  --s-editor-border: #E2E8F0;
+}

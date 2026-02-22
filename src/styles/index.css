@@ -1,0 +1,82 @@
+@import "tailwindcss";
+@import "./theme-light.css";
+@import "./theme-dark.css";
+@import "./buttons.css";
+@import "./components.css";
+@import "./md-editor.css";
+
+@plugin "@tailwindcss/typography";
+
+/* 使用 :is() 替代 :where()，让 dark: 变体拥有 .dark 的权重（0,1,0），避免被基础 utility 覆盖 */
+@custom-variant dark (&:is(.dark, .dark *));
+
+@theme {
+  /* 主题色 - 墨蓝 */
+  --color-primary-50: #F0F4FE;
+  --color-primary-100: #E0E8FC;
+  --color-primary-200: #C1D0FA;
+  --color-primary-300: #94AFF5;
+  --color-primary-400: #6A8DEE;
+  --color-primary-500: #4B6FE5;
+  --color-primary-600: #3B5CD6;
+  --color-primary-700: #3049B8;
+  --color-primary-800: #2C3F98;
+  --color-primary-900: #283879;
+  --color-primary: #3B5CD6;
+
+  /* 强调色 - 暖珊瑚 */
+  --color-accent-50: #FEF4F0;
+  --color-accent-100: #FDE5DC;
+  --color-accent-200: #FBCABA;
+  --color-accent-300: #F7A78C;
+  --color-accent-400: #F28560;
+  --color-accent-500: #E8684A;
+  --color-accent-600: #D55030;
+  --color-accent: #E8684A;
+
+  /* 语义色 - 自动跟随亮/暗模式 */
+  --color-surface: var(--s-bg);
+  --color-surface-card: var(--s-card);
+  --color-surface-header: var(--s-header);
+  --color-surface-menu: var(--s-menu);
+  --color-on-surface: var(--s-text);
+  --color-on-surface-muted: var(--s-muted);
+  --color-border: var(--s-border);
+
+  /* 字体 */
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+
+  /* 动画 */
+  --animate-fade-in: fadeIn 0.2s ease-out;
+  --animate-slide-in: slideIn 0.3s ease-out;
+  --animate-scale-in: scaleIn 0.2s ease-out;
+}
+
+/* 基础样式 */
+html {
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body {
+  background: var(--s-bg-gradient, var(--s-bg));
+  background-size: 300% 300%;
+  animation: gradientShift 10s ease infinite;
+  color: var(--s-text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
+#root {
+  width: 100% !important;
+  min-height: 100vh;
+  margin: 0 !important;
+  padding: 0 !important;
+}
