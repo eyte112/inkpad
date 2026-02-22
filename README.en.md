@@ -15,9 +15,6 @@
 
 ---
 
-> [!CAUTION]
-> This project was developed with AI assistance and may contain unknown security vulnerabilities. Do not use it to store sensitive information (passwords, keys, private data, etc.). Use at your own risk.
-
 ## Features
 
 | | Feature | Description |
@@ -29,7 +26,17 @@
 | :key: | **Passwordless Login** | WebAuthn Passkey (pure Web Crypto, no server-side deps) |
 | :crescent_moon: | **Dark Mode** | System-aware with manual toggle |
 | :label: | **Tags & Search** | Organize and find notes quickly |
+| :clock3: | **Version History** | Auto-saves every edit, view and restore any previous version |
+| :bulb: | **Edit Suggestions** | Visitors can submit suggestions on shared notes, author reviews and accepts |
 | :globe_with_meridians: | **Multi-platform** | Deploy anywhere with unified KV abstraction |
+
+### Roadmap
+
+- Custom share link slugs
+- Share link expiration settings
+- Note export (PDF / HTML / Markdown bundle download)
+- Burn after reading (auto-destroy shared content after viewing)
+- End-to-end encryption (client-side encryption, zero-knowledge server)
 
 ## Screenshots
 
