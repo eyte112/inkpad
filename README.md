@@ -7,8 +7,8 @@
 [![License](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](./LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://ghcr.io/eyte112/inkpad)
 
-[![Deploy to EdgeOne Pages](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2Feyte112%2Finkpad)
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/eyte112/inkpad)
+<a href="https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2Feyte112%2Finkpad"><img src="https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg" height="32" alt="Deploy to EdgeOne Pages" /></a>&nbsp;
+<a href="https://deploy.workers.cloudflare.com/?url=https://github.com/eyte112/inkpad"><img src="https://deploy.workers.cloudflare.com/button" height="32" alt="Deploy to Cloudflare Workers" /></a>
 
 [功能特性](#功能特性) · [预览截图](#预览截图) · [快速开始](#快速开始) · [部署方式](#部署方式) · [本地开发](#本地开发)
 
