@@ -7,7 +7,7 @@ import { MarkdownEditor } from '@/components/editor';
 import { HistoryDrawer } from '@/components/editor/HistoryDrawer';
 import { SuggestionDrawer } from '@/components/editor/SuggestionDrawer';
 import { Button, Loading, ShareDialog } from '@/components/ui';
-import { ChevronLeft, Save, Share2, Check, AlertCircle, History, MessageSquare } from 'lucide-react';
+import { ChevronLeft, Save, Share2, Check, AlertCircle, History, MessageSquare, MoreVertical } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import { toast } from '@/stores/toastStore';
 import { saveNoteDraft, getNoteDraft, clearNoteDraft } from '@/utils/storage';
@@ -35,6 +35,8 @@ export function EditorPage() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
   const [showSuggestionDrawer, setShowSuggestionDrawer] = useState(false);
+  const [showEditorMenu, setShowEditorMenu] = useState(false);
+  const editorMenuRef = useRef<HTMLDivElement>(null);
   const [compareState, setCompareState] = useState<{ content: string; compareText: string; labels: { left: string; right: string } } | null>(null);
   // 用 ref 存最新值，避免 doSave 依赖 state 导致频繁重建
   const latestRef = useRef({ title, content, version, noteId });
@@ -289,6 +291,18 @@ export function EditorPage() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [doCloudSync]);
 
+  // 移动端菜单：点击外部关闭
+  useEffect(() => {
+    if (!showEditorMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (editorMenuRef.current && !editorMenuRef.current.contains(e.target as Node)) {
+        setShowEditorMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showEditorMenu]);
+
   // 冲突解决：使用本地版本
   const handleUseLocal = useCallback(() => {
     if (!conflictData) return;
@@ -341,7 +355,7 @@ export function EditorPage() {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="无标题笔记"
           className={cn(
-            'flex-1 bg-transparent',
+            'flex-1 min-w-0 bg-transparent',
             'text-lg font-medium text-on-surface',
             'placeholder:text-on-surface-muted',
             'focus:outline-none'
@@ -350,26 +364,84 @@ export function EditorPage() {
 
         <SaveStatus status={saveStatus} />
 
-        <Button variant="ghost" size="sm" onClick={handleManualSave}>
-          <Save className="w-4 h-4" />
-        </Button>
+        {/* 桌面端：保持原有按钮（容器控制响应式可见性，避免 Button 基础类 inline-flex 覆盖 hidden） */}
+        <div className="hidden md:flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={handleManualSave}>
+            <Save className="w-4 h-4" />
+          </Button>
 
-        <Button variant="ghost" size="sm" onClick={() => noteId && setShowHistoryDrawer(true)} disabled={!noteId}>
-          <History className="w-4 h-4" />
-        </Button>
+          <Button variant="ghost" size="sm" onClick={() => noteId && setShowHistoryDrawer(true)} disabled={!noteId}>
+            <History className="w-4 h-4" />
+          </Button>
 
-        <Button variant="ghost" size="sm" onClick={() => noteId && setShowSuggestionDrawer(true)} disabled={!noteId} className="relative">
-          <MessageSquare className="w-4 h-4" />
-          {pendingSuggestions.length > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
-              {pendingSuggestions.length}
-            </span>
+          <Button variant="ghost" size="sm" onClick={() => noteId && setShowSuggestionDrawer(true)} disabled={!noteId} className="relative">
+            <MessageSquare className="w-4 h-4" />
+            {pendingSuggestions.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
+                {pendingSuggestions.length}
+              </span>
+            )}
+          </Button>
+
+          <Button variant="ghost" size="sm" onClick={() => noteId && setShowShareDialog(true)} disabled={!noteId}>
+            <Share2 className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* 移动端：收进下拉菜单 */}
+        <div className="relative md:hidden" ref={editorMenuRef}>
+          <button
+            onClick={() => setShowEditorMenu(!showEditorMenu)}
+            className="p-2 rounded-xl hover:bg-surface-card transition-colors cursor-pointer relative"
+          >
+            <MoreVertical className="w-5 h-5 text-on-surface-muted" />
+            {pendingSuggestions.length > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
+            )}
+          </button>
+
+          {showEditorMenu && (
+            <div className="absolute right-0 mt-2 w-48 bg-surface-menu backdrop-blur-xl rounded-2xl shadow-xl shadow-black/5 dark:shadow-black/20 border border-border py-1.5 z-50">
+              <button
+                onClick={() => { handleManualSave(); setShowEditorMenu(false); }}
+                className="w-full px-4 py-2.5 text-left text-sm text-on-surface hover:bg-surface-card flex items-center gap-3 cursor-pointer"
+              >
+                <Save className="w-4 h-4 text-on-surface-muted" />
+                保存
+                <span className="ml-auto text-xs text-on-surface-muted">Ctrl+S</span>
+              </button>
+              <button
+                onClick={() => { if (noteId) { setShowHistoryDrawer(true); setShowEditorMenu(false); } }}
+                disabled={!noteId}
+                className="w-full px-4 py-2.5 text-left text-sm text-on-surface hover:bg-surface-card flex items-center gap-3 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <History className="w-4 h-4 text-on-surface-muted" />
+                历史版本
+              </button>
+              <button
+                onClick={() => { if (noteId) { setShowSuggestionDrawer(true); setShowEditorMenu(false); } }}
+                disabled={!noteId}
+                className="w-full px-4 py-2.5 text-left text-sm text-on-surface hover:bg-surface-card flex items-center gap-3 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <MessageSquare className="w-4 h-4 text-on-surface-muted" />
+                修改建议
+                {pendingSuggestions.length > 0 && (
+                  <span className="ml-auto px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] leading-none">
+                    {pendingSuggestions.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => { if (noteId) { setShowShareDialog(true); setShowEditorMenu(false); } }}
+                disabled={!noteId}
+                className="w-full px-4 py-2.5 text-left text-sm text-on-surface hover:bg-surface-card flex items-center gap-3 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Share2 className="w-4 h-4 text-on-surface-muted" />
+                分享
+              </button>
+            </div>
           )}
-        </Button>
-
-        <Button variant="ghost" size="sm" onClick={() => noteId && setShowShareDialog(true)} disabled={!noteId}>
-          <Share2 className="w-4 h-4" />
-        </Button>
+        </div>
       </header>
 
       {/* Editor */}
