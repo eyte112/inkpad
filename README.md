@@ -99,9 +99,11 @@ volumes:
 
 ## 部署方式
 
-### 方式一：VPS / Docker
+### 方式一：VPS / Docker（推荐）
 
-数据持久化在 SQLite，默认路径 `/app/data/inkpad.db`。
+数据持久化在 SQLite，存储于 Docker Volume 中，默认路径 `/app/data/inkpad.db`。
+
+Docker 镜像在每次推送到 `main` 分支或创建版本标签时，由 GitHub Actions 自动构建并发布到 GHCR。
 
 | 环境变量 | 说明 | 默认值 |
 |:---------|:-----|:-------|
@@ -109,19 +111,93 @@ volumes:
 | `DB_PATH` | SQLite 数据库路径 | `./data/inkpad.db` |
 | `CORS_ORIGINS` | 允许的跨域来源（逗号分隔） | 仅同源 |
 
+<details>
+<summary><b>反向代理配置（Nginx 示例）</b></summary>
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name notes.example.com;
+
+    ssl_certificate     /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 10m;
+    }
+}
+```
+
+</details>
+
+<details>
+<summary><b>数据备份</b></summary>
+
+```bash
+# 备份数据库
+docker cp inkpad:/app/data/inkpad.db ./inkpad-backup.db
+
+# 恢复数据库
+docker cp ./inkpad-backup.db inkpad:/app/data/inkpad.db
+docker restart inkpad
+```
+
+</details>
+
 ### 方式二：EdgeOne Pages
 
-1. 推送代码到 GitHub
-2. 在 [EdgeOne Pages 控制台](https://console.cloud.tencent.com/edgeone/pages) 导入项目
-3. 构建命令 `npm run build`，输出目录 `dist`
-4. 创建 KV 命名空间并绑定到 Functions
+点击上方一键部署按钮，或手动操作：
+
+1. Fork 或推送代码到 GitHub
+2. 登录 [EdgeOne Pages 控制台](https://edgeone.ai/pages)，点击「新建项目」，导入 GitHub 仓库
+3. 构建配置：
+   - 构建命令：`npm run build`
+   - 输出目录：`dist`
+4. 创建并绑定 KV 命名空间：
+   - 进入项目「设置」→「KV 存储」
+   - 创建一个新的 KV 命名空间（名称随意，如 `inkpad-kv`）
+   - **绑定变量名必须填大写 `KV`**（代码中通过 `declare const KV` 访问）
+5. 触发重新部署，等待构建完成
+
+> **注意**：KV 变量名区分大小写，填写 `kv` 或 `Kv` 都会导致后端 500 错误。
 
 ### 方式三：Cloudflare Workers
 
-1. 安装 Wrangler CLI：`npm i -g wrangler`
-2. 创建 KV 命名空间：`wrangler kv namespace create KV`
-3. 将返回的 `id` 填入 `wrangler.toml` 的 `kv_namespaces` 配置
-4. 部署：`wrangler deploy`
+点击上方一键部署按钮，或手动操作：
+
+1. 安装 Wrangler CLI 并登录：
+   ```bash
+   npm i -g wrangler
+   wrangler login
+   ```
+2. 构建前端：
+   ```bash
+   npm install
+   npm run build
+   ```
+3. 创建 KV 命名空间：
+   ```bash
+   wrangler kv namespace create KV
+   # 记录返回的 id，如：{ id: "xxxxxxxxxxxx" }
+   ```
+4. 编辑 `platforms/cloudflare/wrangler.jsonc`，将 `kv_namespaces` 中的 `id` 替换为上一步返回的值：
+   ```jsonc
+   "kv_namespaces": [
+     { "binding": "KV", "id": "你的实际 namespace id" }
+   ]
+   ```
+5. 从 `platforms/cloudflare/` 目录部署：
+   ```bash
+   cd platforms/cloudflare
+   wrangler deploy
+   ```
+
+> **注意**：Cloudflare Workers 的配置文件是 `wrangler.jsonc`（非 `.toml`），位于 `platforms/cloudflare/` 目录下。
 
 ## 项目结构
 

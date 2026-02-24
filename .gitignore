@@ -59,4 +59,7 @@ PROJECT_GUIDE.md
 .env
 .edgeone/*
 .tef_dist/*
+
+# Cloudflare Workers
+.wrangler/
   

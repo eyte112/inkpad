@@ -99,9 +99,11 @@ volumes:
 
 ## Deployment
 
-### Option 1: VPS / Docker
+### Option 1: VPS / Docker (Recommended)
 
-Data is persisted in SQLite at `/app/data/inkpad.db`.
+Data is persisted in SQLite within the Docker Volume at `/app/data/inkpad.db`.
+
+Docker images are automatically built and published to GHCR by GitHub Actions on every push to `main` or version tag.
 
 | Env Variable | Description | Default |
 |:-------------|:------------|:--------|
@@ -109,19 +111,93 @@ Data is persisted in SQLite at `/app/data/inkpad.db`.
 | `DB_PATH` | SQLite database path | `./data/inkpad.db` |
 | `CORS_ORIGINS` | Allowed CORS origins (comma-separated) | Same-origin only |
 
+<details>
+<summary><b>Reverse Proxy (Nginx example)</b></summary>
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name notes.example.com;
+
+    ssl_certificate     /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 10m;
+    }
+}
+```
+
+</details>
+
+<details>
+<summary><b>Data Backup</b></summary>
+
+```bash
+# Backup
+docker cp inkpad:/app/data/inkpad.db ./inkpad-backup.db
+
+# Restore
+docker cp ./inkpad-backup.db inkpad:/app/data/inkpad.db
+docker restart inkpad
+```
+
+</details>
+
 ### Option 2: EdgeOne Pages
 
-1. Push code to GitHub
-2. Import in [EdgeOne Pages Console](https://console.cloud.tencent.com/edgeone/pages)
-3. Build command: `npm run build`, output: `dist`
-4. Create KV namespace and bind to Functions
+Click the one-click deploy button above, or deploy manually:
+
+1. Fork or push the code to GitHub
+2. Log in to [EdgeOne Pages Console](https://edgeone.ai/pages), click "New Project", and import the GitHub repository
+3. Build settings:
+   - Build command: `npm run build`
+   - Output directory: `dist`
+4. Create and bind a KV namespace:
+   - Go to project "Settings" → "KV Storage"
+   - Create a new KV namespace (any name, e.g. `inkpad-kv`)
+   - **The binding variable name must be uppercase `KV`** (code accesses it via `declare const KV`)
+5. Trigger a redeployment and wait for the build to complete
+
+> **Note**: The KV variable name is case-sensitive. Using `kv` or `Kv` will cause 500 errors.
 
 ### Option 3: Cloudflare Workers
 
-1. Install Wrangler CLI: `npm i -g wrangler`
-2. Create KV namespace: `wrangler kv namespace create KV`
-3. Add the returned `id` to `kv_namespaces` in `wrangler.toml`
-4. Deploy: `wrangler deploy`
+Click the one-click deploy button above, or deploy manually:
+
+1. Install Wrangler CLI and log in:
+   ```bash
+   npm i -g wrangler
+   wrangler login
+   ```
+2. Build the frontend:
+   ```bash
+   npm install
+   npm run build
+   ```
+3. Create a KV namespace:
+   ```bash
+   wrangler kv namespace create KV
+   # Note the returned id, e.g.: { id: "xxxxxxxxxxxx" }
+   ```
+4. Edit `platforms/cloudflare/wrangler.jsonc` and replace the `id` in `kv_namespaces` with the value from the previous step:
+   ```jsonc
+   "kv_namespaces": [
+     { "binding": "KV", "id": "your-actual-namespace-id" }
+   ]
+   ```
+5. Deploy from the `platforms/cloudflare/` directory:
+   ```bash
+   cd platforms/cloudflare
+   wrangler deploy
+   ```
+
+> **Note**: The Cloudflare config file is `wrangler.jsonc` (not `.toml`), located in `platforms/cloudflare/`.
 
 ## Architecture
 
