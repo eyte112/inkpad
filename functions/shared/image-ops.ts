@@ -37,7 +37,7 @@ export async function deleteFromGithub(
 
   const getRes = await fetch(
     `https://api.github.com/repos/${repo}/contents/${path}?ref=${branch}`,
-    { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'User-Agent': 'CloudNotepad/1.0' } }
+    { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'User-Agent': 'InkPad/1.0' } }
   );
   if (!getRes.ok) throw new Error('文件不存在');
   const fileData = await getRes.json();
@@ -46,7 +46,7 @@ export async function deleteFromGithub(
     `https://api.github.com/repos/${repo}/contents/${path}`,
     {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'User-Agent': 'CloudNotepad/1.0', 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json', 'User-Agent': 'InkPad/1.0', 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: `Delete: ${path}`, sha: fileData.sha, branch }),
     }
   );

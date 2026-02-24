@@ -7,6 +7,9 @@
 [![License](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](./LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://ghcr.io/eyte112/inkpad)
 
+[![Deploy to EdgeOne Pages](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2Feyte112%2Finkpad)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/eyte112/inkpad)
+
 [功能特性](#功能特性) · [预览截图](#预览截图) · [快速开始](#快速开始) · [部署方式](#部署方式) · [本地开发](#本地开发)
 
 <a href="./README.en.md">English</a>
@@ -98,12 +101,12 @@ volumes:
 
 ### 方式一：VPS / Docker
 
-数据持久化在 SQLite，默认路径 `/app/data/cloudnotepad.db`。
+数据持久化在 SQLite，默认路径 `/app/data/inkpad.db`。
 
 | 环境变量 | 说明 | 默认值 |
 |:---------|:-----|:-------|
 | `PORT` | 服务端口 | `3000` |
-| `DB_PATH` | SQLite 数据库路径 | `./data/cloudnotepad.db` |
+| `DB_PATH` | SQLite 数据库路径 | `./data/inkpad.db` |
 | `CORS_ORIGINS` | 允许的跨域来源（逗号分隔） | 仅同源 |
 
 ### 方式二：EdgeOne Pages
@@ -113,14 +116,23 @@ volumes:
 3. 构建命令 `npm run build`，输出目录 `dist`
 4. 创建 KV 命名空间并绑定到 Functions
 
+### 方式三：Cloudflare Workers
+
+1. 安装 Wrangler CLI：`npm i -g wrangler`
+2. 创建 KV 命名空间：`wrangler kv namespace create KV`
+3. 将返回的 `id` 填入 `wrangler.toml` 的 `kv_namespaces` 配置
+4. 部署：`wrangler deploy`
+
 ## 项目结构
 
 ```
 src/           -> 前端 React SPA
 functions/     -> 后端业务逻辑（平台无关）
   ├── api/     -> REST API 路由
-  └── shared/  -> 认证、KV 抽象、工具函数
+  └── shared/  -> 认证、KV 抽象、统一路由器
 server/        -> VPS 入口（Hono + SQLite）
+platforms/     -> 其他平台入口
+  └── cloudflare/  -> Cloudflare Workers 入口
 ```
 
 > **KV 抽象层** — 业务逻辑通过 `IKVStore` 统一接口访问数据。各平台适配器（EdgeOne KV、SQLite、Cloudflare Workers 等）实现该接口。新增平台只需实现接口 + 创建入口文件。

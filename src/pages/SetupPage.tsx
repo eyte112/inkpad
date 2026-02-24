@@ -46,7 +46,7 @@ export function SetupPage() {
               <KeyRound className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-on-surface">
-              欢迎使用云记事本
+              欢迎使用 InkPad
             </h1>
             <p className="mt-1.5 text-sm text-on-surface-muted">
               首次使用，请设置访问密码

@@ -27,7 +27,7 @@ interface StoredCredential {
 
 function getRpConfig(request: Request) {
   const url = new URL(request.url);
-  return { rpName: '云记事本', rpID: url.hostname, origin: url.origin };
+  return { rpName: 'InkPad', rpID: url.hostname, origin: url.origin };
 }
 
 async function getStoredCredentials(): Promise<StoredCredential[]> {
@@ -163,4 +163,30 @@ export async function handleAuthVerify(request: Request): Promise<Response> {
     console.error('Passkey auth verify error:', err);
     return error(500, 'Passkey 认证失败');
   }
+}
+
+// --- 以下为从 [[path]].ts 提取的内联 handler ---
+
+export async function handlePasskeyCheck(): Promise<Response> {
+  try {
+    const creds = await getStoredCredentials();
+    return json({ hasPasskey: creds.length > 0 });
+  } catch {
+    return json({ hasPasskey: false });
+  }
+}
+
+export async function handlePasskeyList(): Promise<Response> {
+  const creds = await getStoredCredentials();
+  return json(creds.map((c) => ({ id: c.id, deviceName: c.deviceName, createdAt: c.createdAt })));
+}
+
+export async function handlePasskeyDelete(request: Request): Promise<Response> {
+  const { id } = (await request.json()) as { id: string };
+  if (!id) return error(400, '缺少凭证 ID');
+  const creds = await getStoredCredentials();
+  const filtered = creds.filter((c) => c.id !== id);
+  if (filtered.length === creds.length) return error(404, '凭证不存在');
+  await saveCredentials(filtered);
+  return json({ success: true });
 }

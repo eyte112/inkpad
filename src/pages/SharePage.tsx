@@ -228,7 +228,7 @@ export function SharePage() {
     <div className={cn("fixed inset-0", editing ? "flex flex-col overflow-hidden" : "overflow-auto")}>
       <header className="w-full h-14 sticky top-0 z-20 px-4 flex items-center justify-between bg-surface-header backdrop-blur-xl border-b border-border">
         <span className="text-sm text-on-surface-muted">
-          {editing ? '编辑模式' : '云记事本分享'}
+          {editing ? '编辑模式' : 'InkPad 分享'}
         </span>
         <div className="flex items-center gap-1">
           {editing ? (

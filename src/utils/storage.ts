@@ -30,18 +30,20 @@ export function removeStorage(key: string): void {
   localStorage.removeItem(key);
 }
 
+export interface NoteDraft {
+  title: string;
+  content: string;
+  savedAt: string;
+  version: number;
+  synced: boolean;
+}
+
 /**
  * 获取笔记草稿
  */
-export function getNoteDraft(noteId: string) {
+export function getNoteDraft(noteId: string): NoteDraft | null {
   const key = `${STORAGE_KEYS.DRAFT_PREFIX}${noteId}`;
-  const draft = getStorage<{
-    content: string;
-    savedAt: string;
-    version: number;
-  } | null>(key, null);
-
-  return draft;
+  return getStorage<NoteDraft | null>(key, null);
 }
 
 /**
@@ -49,14 +51,18 @@ export function getNoteDraft(noteId: string) {
  */
 export function saveNoteDraft(
   noteId: string,
+  title: string,
   content: string,
-  version: number
+  version: number,
+  synced = false
 ): void {
   const key = `${STORAGE_KEYS.DRAFT_PREFIX}${noteId}`;
   setStorage(key, {
+    title,
     content,
     savedAt: new Date().toISOString(),
     version,
+    synced,
   });
 }
 

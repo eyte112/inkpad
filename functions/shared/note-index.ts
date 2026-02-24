@@ -1,5 +1,7 @@
 // 笔记索引管理模块 — 消除 N+1 全量扫描
-// 用法：import { getIndex, updateIndex, removeFromIndex, rebuildIndex } from '../shared/note-index.ts';
+// 用法：import { getIndex, updateIndex, removeFromIndex, rebuildIndex, handleRebuildIndex } from '../shared/note-index.ts';
+
+import { json } from './types.ts';
 
 // @ts-ignore - KV 是 EdgeOne Pages 全局变量
 declare const KV: any;
@@ -94,4 +96,9 @@ export async function rebuildIndex(): Promise<number> {
 
   await saveIndex(items);
   return items.length;
+}
+
+export async function handleRebuildIndex(): Promise<Response> {
+  const count = await rebuildIndex();
+  return json({ success: true, count });
 }

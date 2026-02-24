@@ -7,6 +7,9 @@
 [![License](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](./LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://ghcr.io/eyte112/inkpad)
 
+[![Deploy to EdgeOne Pages](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2Feyte112%2Finkpad)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/eyte112/inkpad)
+
 [Features](#features) · [Screenshots](#screenshots) · [Quick Start](#quick-start) · [Deployment](#deployment) · [Development](#development)
 
 <a href="./README.md">中文文档</a>
@@ -98,12 +101,12 @@ volumes:
 
 ### Option 1: VPS / Docker
 
-Data is persisted in SQLite at `/app/data/cloudnotepad.db`.
+Data is persisted in SQLite at `/app/data/inkpad.db`.
 
 | Env Variable | Description | Default |
 |:-------------|:------------|:--------|
 | `PORT` | Server port | `3000` |
-| `DB_PATH` | SQLite database path | `./data/cloudnotepad.db` |
+| `DB_PATH` | SQLite database path | `./data/inkpad.db` |
 | `CORS_ORIGINS` | Allowed CORS origins (comma-separated) | Same-origin only |
 
 ### Option 2: EdgeOne Pages
@@ -113,14 +116,23 @@ Data is persisted in SQLite at `/app/data/cloudnotepad.db`.
 3. Build command: `npm run build`, output: `dist`
 4. Create KV namespace and bind to Functions
 
+### Option 3: Cloudflare Workers
+
+1. Install Wrangler CLI: `npm i -g wrangler`
+2. Create KV namespace: `wrangler kv namespace create KV`
+3. Add the returned `id` to `kv_namespaces` in `wrangler.toml`
+4. Deploy: `wrangler deploy`
+
 ## Architecture
 
 ```
 src/           -> Frontend React SPA
 functions/     -> Backend handlers (platform-agnostic)
   ├── api/     -> REST API routes
-  └── shared/  -> Auth, KV abstraction, utilities
+  └── shared/  -> Auth, KV abstraction, unified router
 server/        -> VPS entry (Hono + SQLite)
+platforms/     -> Other platform entries
+  └── cloudflare/  -> Cloudflare Workers entry
 ```
 
 > **KV Abstraction** — Business logic talks to `IKVStore` interface. Platform adapters (EdgeOne KV, SQLite, Cloudflare Workers, etc.) implement it. Add a new platform by implementing the interface + creating an entry file.

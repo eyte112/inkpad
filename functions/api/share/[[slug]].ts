@@ -2,7 +2,7 @@ import { verifyPassword, hashPassword } from '../../shared/crypto.ts';
 
 // @ts-ignore
 declare const KV: any;
-export async function onRequest(context: any): Promise<Response> {
+export async function handleShareAccess(context: any): Promise<Response> {
   try {
     const request: Request = context.request;
     const url = new URL(request.url);
@@ -109,6 +109,9 @@ function jsonRes(data: any, status = 200): Response {
 }
 
 // 内联 suggest handler（保持自包含，不依赖外部模块）
+// EdgeOne 文件路由需要 onRequest 导出
+export { handleShareAccess as onRequest };
+
 async function handleSuggestInline(request: Request, slug: string): Promise<Response> {
   try {
     const share = await KV.get(`share:${slug}`, { type: 'json' });

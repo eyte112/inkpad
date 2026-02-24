@@ -3,7 +3,7 @@ import { authMiddleware } from '../../../shared/auth-middleware.ts';
 import { signR2Request, getAmzDate } from '../../../shared/r2-signature.ts';
 
 // POST /api/settings/imagebed/test - 测试图床连接
-export async function onRequest(context: any): Promise<Response> {
+export async function handleImagebedTest(context: any): Promise<Response> {
   const { request } = context;
 
   if (request.method !== 'POST') {
@@ -40,7 +40,7 @@ async function testGithub(github: { token: string; repo: string }): Promise<Resp
       headers: {
         'Authorization': `Bearer ${github.token}`,
         'Accept': 'application/vnd.github+json',
-        'User-Agent': 'CloudNotepad/1.0',
+        'User-Agent': 'InkPad/1.0',
       },
     }
   );
@@ -123,3 +123,5 @@ async function testImgur(imgur: { clientId: string }): Promise<Response> {
 
   return json({ success: true, message: `连接成功（剩余配额: ${data.data.ClientRemaining}/${data.data.ClientLimit}）` });
 }
+
+export { handleImagebedTest as onRequest };

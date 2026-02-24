@@ -51,7 +51,7 @@ export function Layout({ children, sidebar }: LayoutProps) {
             <Menu className="w-5 h-5" />
           </button>
           <span className="font-semibold text-on-surface flex-1">
-            云记事本
+            InkPad
           </span>
           <button
             onClick={toggleTheme}

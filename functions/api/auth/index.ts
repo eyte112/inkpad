@@ -320,8 +320,8 @@ export async function handleResetConfirm(request: Request): Promise<Response> {
     if (!valid) return error(403, 'token 无效或已过期');
     await KV.delete(`reset:token:${token}`);
 
-    // 执行全量删除
-    let deletedCount = 0;
+    // 先收集所有 key，再统一删除（避免边删除边分页导致 cursor 失效）
+    const allKeys: string[] = [];
     let cursor: string | undefined;
 
     do {
@@ -333,14 +333,16 @@ export async function handleResetConfirm(request: Request): Promise<Response> {
 
       for (const key of keys) {
         const keyName = typeof key === 'string' ? key : (key.key || key.name);
-        if (keyName) {
-          await KV.delete(keyName);
-          deletedCount++;
-        }
+        if (keyName) allKeys.push(keyName);
       }
 
       cursor = result?.cursor;
     } while (cursor);
+
+    for (const keyName of allKeys) {
+      await KV.delete(keyName);
+    }
+    const deletedCount = allKeys.length;
 
     const cookie = clearAuthCookie(isSecureRequest(request));
     return jsonWithCookie({ success: true, deleted: deletedCount }, cookie);

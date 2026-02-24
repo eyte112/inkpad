@@ -78,7 +78,7 @@ export function LoginPage() {
               <Lock className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-on-surface">
-              云记事本
+              InkPad
             </h1>
             <p className="mt-1.5 text-sm text-on-surface-muted">
               {hasPasskey ? '选择登录方式' : '请输入密码登录'}

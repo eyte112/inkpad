@@ -150,7 +150,7 @@ async function uploadToGithub(
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/vnd.github+json',
-        'User-Agent': 'CloudNotepad/1.0',
+        'User-Agent': 'InkPad/1.0',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

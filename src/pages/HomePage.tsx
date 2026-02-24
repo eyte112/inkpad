@@ -99,7 +99,7 @@ export function HomePage() {
       <header className="sticky top-0 z-20 h-14 px-4 lg:px-6 bg-surface-header backdrop-blur-xl border-b border-border">
         <div className="h-full flex items-center justify-between gap-4">
           <h1 className="text-lg font-bold text-on-surface tracking-tight">
-            云记事本
+            InkPad
           </h1>
 
           {/* Desktop Search */}

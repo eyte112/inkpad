@@ -58,7 +58,7 @@ async function saveSettings(request: Request): Promise<Response> {
   }
 }
 
-export async function onRequest(context: any): Promise<Response> {
+export async function handleImagebedSettings(context: any): Promise<Response> {
   const { request } = context;
   const method = request.method;
 
@@ -70,3 +70,5 @@ export async function onRequest(context: any): Promise<Response> {
 
   return error(405, 'Method not allowed');
 }
+
+export { handleImagebedSettings as onRequest };

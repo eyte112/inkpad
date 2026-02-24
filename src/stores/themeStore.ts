@@ -37,7 +37,7 @@ export const useThemeStore = create<ThemeState>()(
       },
     }),
     {
-      name: 'cloudnotepad-theme',
+      name: 'inkpad-theme',
       onRehydrateStorage: () => (state) => {
         if (state) {
           applyTheme(state.theme);

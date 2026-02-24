@@ -65,7 +65,7 @@ export async function handleProxy(request: Request): Promise<Response> {
     }
 
     const res = await fetch(rawUrl, {
-      headers: { 'User-Agent': 'CloudNotepad/1.0' },
+      headers: { 'User-Agent': 'InkPad/1.0' },
     });
 
     if (!res.ok) {

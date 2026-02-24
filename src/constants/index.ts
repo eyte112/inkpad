@@ -15,5 +15,6 @@ export const STORAGE_KEYS = {
 // 笔记配置
 export const NOTE_CONFIG = {
   MAX_HISTORY: 10,
-  AUTO_SAVE_DELAY: 2000,
+  AUTO_SAVE_DELAY: 1000,
+  CLOUD_SYNC_INTERVAL: 30000,
 };

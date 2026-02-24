@@ -10,8 +10,12 @@ import { Button, Loading, ShareDialog } from '@/components/ui';
 import { ChevronLeft, Save, Share2, Check, AlertCircle, History, MessageSquare } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import { toast } from '@/stores/toastStore';
+import { saveNoteDraft, getNoteDraft, clearNoteDraft } from '@/utils/storage';
+import { ConflictDialog } from '@/components/editor/ConflictDialog';
+import type { ConflictData } from '@/components/editor/ConflictDialog';
+import { NOTE_CONFIG } from '@/constants';
 
-type SaveStatusType = 'idle' | 'saved' | 'saving' | 'unsaved' | 'error';
+type SaveStatusType = 'idle' | 'saved' | 'saving' | 'unsaved' | 'error' | 'local';
 
 export function EditorPage() {
   const { id } = useParams();
@@ -37,6 +41,8 @@ export function EditorPage() {
   latestRef.current = { title, content, version, noteId };
   const isSavingRef = useRef(false);
   const skipNoteEffectRef = useRef(false);
+  const cloudSyncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [conflictData, setConflictData] = useState<ConflictData | null>(null);
 
   const isNew = !noteId;
 
@@ -81,45 +87,18 @@ export function EditorPage() {
     refetchInterval: 30000,
   });
 
-  // 冲突处理：合并并重试
-  const mergeAndRetry = useCallback(async (
-    localChanges: { title?: string; content?: string },
-    isFullSave: boolean
-  ) => {
-    const { title: curTitle, content: curContent, noteId: curNoteId } = latestRef.current;
-    const serverData = await notesApi.get(curNoteId!);
-    const serverTitle = serverData.title || '';
-    const serverContent = serverData.content || '';
-    const serverVersion = serverData.version || 0;
-
-    let mergedTitle = curTitle;
-    let mergedContent = curContent;
-    let hasConflict = false;
-
-    if (localChanges.title !== undefined) {
-      if (serverTitle !== serverContentRef.current.title) hasConflict = true;
-    } else {
-      mergedTitle = serverTitle;
-    }
-
-    if (localChanges.content !== undefined) {
-      if (serverContent !== serverContentRef.current.content) hasConflict = true;
-    } else {
-      mergedContent = serverContent;
-    }
-
-    serverContentRef.current = { title: serverTitle, content: serverContent, version: serverVersion };
-    if (hasConflict) toast.info('检测到冲突，已保留本地修改');
-
-    const retryData = isFullSave
-      ? { id: curNoteId!, title: mergedTitle, content: mergedContent, version: serverVersion }
-      : { id: curNoteId!, ...localChanges, version: serverVersion };
-
-    return await notesApi.partialUpdate(retryData);
+  // 保存本地草稿
+  const saveLocal = useCallback(() => {
+    const { title: t, content: c, version: v, noteId: nId } = latestRef.current;
+    if (!nId) return;
+    const prev = prevContentRef.current;
+    if (t === prev.title && c === prev.content) return;
+    saveNoteDraft(nId, t, c, v, false);
+    setSaveStatus('local');
   }, []);
 
-  // 执行保存（通过 latestRef 读取最新值，避免依赖 state 频繁重建）
-  const doSave = useCallback(async (isFullSave: boolean, createSnapshot = false) => {
+  // 云端同步（API 写入 + 快照）
+  const doCloudSync = useCallback(async (createSnapshot = true) => {
     if (isSavingRef.current) return;
     isSavingRef.current = true;
 
@@ -129,42 +108,19 @@ export function EditorPage() {
     const contentChanged = c !== prev.content;
 
     if (!titleChanged && !contentChanged) {
-      // 无内容变化但需要创建快照时，仍发送请求
-      if (createSnapshot && nId) {
-        setSaveStatus('saving');
-        try {
-          const savedNote = await notesApi.partialUpdate({ id: nId, version: v, createSnapshot: true });
-          if (savedNote) {
-            skipNoteEffectRef.current = true;
-            queryClient.setQueryData(['note', nId], savedNote);
-            if (savedNote.version) {
-              setVersion(savedNote.version);
-              serverContentRef.current = { ...serverContentRef.current, version: savedNote.version };
-            }
-          }
-          setSaveStatus('saved');
-        } catch {
-          setSaveStatus('error');
-        }
-      }
       isSavingRef.current = false;
       return;
     }
 
     setSaveStatus('saving');
-    let saveSucceeded = false;
-
     try {
       let savedNote;
-
       if (!nId) {
         savedNote = await notesApi.create({ title: t, content: c, tags: [] });
         queryClient.setQueryData(['note', savedNote.id], savedNote);
         queryClient.invalidateQueries({ queryKey: ['notes'] });
         setNoteId(savedNote.id);
         window.history.replaceState(null, '', `/note/${savedNote.id}`);
-      } else if (isFullSave) {
-        savedNote = await notesApi.update({ id: nId, title: t, content: c, version: v, createSnapshot });
       } else {
         const changes: { id: string; title?: string; content?: string; version: number; createSnapshot?: boolean } = { id: nId, version: v };
         if (titleChanged) changes.title = t;
@@ -180,72 +136,93 @@ export function EditorPage() {
       }
 
       setSaveStatus('saved');
-      saveSucceeded = true;
       prevContentRef.current = { title: t, content: c };
       if (savedNote?.version) {
         setVersion(savedNote.version);
         serverContentRef.current = { title: t, content: c, version: savedNote.version };
       }
+      // 同步成功，标记草稿已同步
+      if (nId) saveNoteDraft(nId, t, c, savedNote?.version ?? v, true);
     } catch (err: any) {
       if (err?.message?.includes('409') || err?.message?.includes('版本冲突')) {
+        // 409 冲突：拉取最新版本重试
         try {
-          const changes: { title?: string; content?: string } = {};
-          if (titleChanged) changes.title = t;
-          if (contentChanged) changes.content = c;
-
-          const savedNote = await mergeAndRetry(changes, isFullSave);
+          const serverData = await notesApi.get(nId!);
+          const sv = serverData.version || 0;
+          serverContentRef.current = { title: serverData.title || '', content: serverData.content || '', version: sv };
+          const retryData: { id: string; title?: string; content?: string; version: number; createSnapshot?: boolean } = { id: nId!, version: sv };
+          if (titleChanged) retryData.title = t;
+          if (contentChanged) retryData.content = c;
+          if (createSnapshot) retryData.createSnapshot = true;
+          const savedNote = await notesApi.partialUpdate(retryData);
           if (savedNote) {
             skipNoteEffectRef.current = true;
             queryClient.setQueryData(['note', nId!], savedNote);
             queryClient.invalidateQueries({ queryKey: ['notes'] });
           }
           setSaveStatus('saved');
-          saveSucceeded = true;
           prevContentRef.current = { title: t, content: c };
-          if (savedNote?.version) setVersion(savedNote.version);
-          return;
+          if (savedNote?.version) {
+            setVersion(savedNote.version);
+            serverContentRef.current = { title: t, content: c, version: savedNote.version };
+          }
+          if (nId) saveNoteDraft(nId, t, c, savedNote?.version ?? sv, true);
+          toast.info('检测到版本冲突，已自动合并');
         } catch {
           setSaveStatus('error');
           toast.error('保存失败', '冲突解决失败，请刷新页面');
-          return;
         }
+      } else {
+        setSaveStatus('error');
+        toast.error('同步失败', err instanceof Error ? err.message : '请稍后重试');
       }
-
-      setSaveStatus('error');
-      toast.error('保存失败', err instanceof Error ? err.message : '请稍后重试');
     } finally {
       isSavingRef.current = false;
-      if (saveSucceeded) {
-        const cur = latestRef.current;
-        if (cur.title !== prevContentRef.current.title || cur.content !== prevContentRef.current.content) {
-          setTimeout(() => doSave(false, false), 500);
-        }
-      }
     }
-  }, [mergeAndRetry, queryClient]);
+  }, [queryClient]);
 
-  // 手动保存（全量 + 快照）
+  // 手动保存（立即云端同步 + 快照）
   const handleManualSave = useCallback(() => {
-    doSave(true, true);
-  }, [doSave]);
+    doCloudSync(true);
+  }, [doCloudSync]);
 
-  // 自动保存（增量，不创建快照）
-  const handleAutoSave = useCallback(() => {
-    doSave(false, false);
-  }, [doSave]);
-
-  // 初始化内容（跳过自身保存触发的更新）
+  // 初始化内容 + 冲突检测
   useEffect(() => {
     if (note) {
       if (skipNoteEffectRef.current) {
         skipNoteEffectRef.current = false;
         return;
       }
-      setTitle(note.title || '');
-      setContent(note.content || '');
-      setVersion(note.version || 0);
-      prevContentRef.current = { title: note.title || '', content: note.content || '' };
-      serverContentRef.current = { title: note.title || '', content: note.content || '', version: note.version || 0 };
+      const cloudTitle = note.title || '';
+      const cloudContent = note.content || '';
+      const cloudVersion = note.version || 0;
+
+      // 检查本地是否有未同步草稿
+      const draft = note.id ? getNoteDraft(note.id) : null;
+      if (draft && !draft.synced && (draft.title !== cloudTitle || draft.content !== cloudContent)) {
+        // 有冲突，显示弹窗
+        setConflictData({
+          localTitle: draft.title,
+          localContent: draft.content,
+          localSavedAt: draft.savedAt,
+          cloudTitle,
+          cloudContent,
+          cloudUpdatedAt: note.updatedAt || note.createdAt || '',
+        });
+        // 先用云端数据填充编辑器，等用户选择
+        serverContentRef.current = { title: cloudTitle, content: cloudContent, version: cloudVersion };
+        setVersion(cloudVersion);
+        setSaveStatus('saved');
+        return;
+      }
+
+      // 无冲突，正常初始化
+      if (draft && draft.synced) clearNoteDraft(note.id!);
+      setTitle(cloudTitle);
+      setContent(cloudContent);
+      setVersion(cloudVersion);
+      prevContentRef.current = { title: cloudTitle, content: cloudContent };
+      serverContentRef.current = { title: cloudTitle, content: cloudContent, version: cloudVersion };
       setSaveStatus('saved');
     }
   }, [note]);
@@ -271,18 +248,68 @@ export function EditorPage() {
 
     setSaveStatus('unsaved');
     const timer = setTimeout(() => {
-      handleAutoSave();
-    }, 2000);
+      saveLocal();
+    }, NOTE_CONFIG.AUTO_SAVE_DELAY);
 
     return () => clearTimeout(timer);
-  }, [title, content, isNew, handleAutoSave]);
+  }, [title, content, isNew, saveLocal]);
 
-  // 关闭页面前带快照保存
+  // 云端定时同步（30s interval）
   useEffect(() => {
-    const onBeforeUnload = () => { doSave(false, true); };
+    cloudSyncTimerRef.current = setInterval(() => {
+      const { noteId: nId } = latestRef.current;
+      if (!nId) return;
+      const draft = getNoteDraft(nId);
+      if (draft && !draft.synced) doCloudSync(true);
+    }, NOTE_CONFIG.CLOUD_SYNC_INTERVAL);
+    return () => {
+      if (cloudSyncTimerRef.current) clearInterval(cloudSyncTimerRef.current);
+    };
+  }, [doCloudSync]);
+
+  // 关闭页面前保存到 localStorage 兜底
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      const { title: t, content: c, version: v, noteId: nId } = latestRef.current;
+      if (nId) saveNoteDraft(nId, t, c, v, false);
+    };
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [doSave]);
+  }, []);
+
+  // Ctrl+S 快捷键：立即云端同步
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        doCloudSync(true);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [doCloudSync]);
+
+  // 冲突解决：使用本地版本
+  const handleUseLocal = useCallback(() => {
+    if (!conflictData) return;
+    setTitle(conflictData.localTitle);
+    setContent(conflictData.localContent);
+    // 不更新 prevContentRef，让 doCloudSync 能检测到与云端的差异
+    setSaveStatus('unsaved');
+    setConflictData(null);
+    setTimeout(() => doCloudSync(true), 100);
+  }, [conflictData, doCloudSync]);
+
+  // 冲突解决：使用云端版本
+  const handleUseCloud = useCallback(() => {
+    if (!conflictData) return;
+    setTitle(conflictData.cloudTitle);
+    setContent(conflictData.cloudContent);
+    prevContentRef.current = { title: conflictData.cloudTitle, content: conflictData.cloudContent };
+    setSaveStatus('saved');
+    setConflictData(null);
+    if (noteId) clearNoteDraft(noteId);
+  }, [conflictData, noteId]);
 
   if (isLoading && !isNew) {
     return (
@@ -413,6 +440,16 @@ export function EditorPage() {
           onCompare={(newText) => { setCompareState({ content, compareText: newText, labels: { left: '当前内容', right: '建议修改' } }); setShowSuggestionDrawer(false); }}
         />
       )}
+
+      {/* 冲突检测弹窗 */}
+      {conflictData && (
+        <ConflictDialog
+          open
+          data={conflictData}
+          onUseLocal={handleUseLocal}
+          onUseCloud={handleUseCloud}
+        />
+      )}
     </div>
   );
 }
@@ -423,13 +460,14 @@ function SaveStatus({ status }: { status: SaveStatusType }) {
 
   return (
     <span className="text-xs text-on-surface-muted flex items-center gap-1">
-      {status === 'saving' && '保存中...'}
+      {status === 'saving' && '同步中...'}
       {status === 'saved' && (
         <>
           <Check className="w-3 h-3 text-green-500" />
-          已保存
+          已同步
         </>
       )}
+      {status === 'local' && '已本地保存'}
       {status === 'unsaved' && '未保存'}
       {status === 'error' && (
         <>
