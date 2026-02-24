@@ -7,9 +7,6 @@
 [![License](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](./LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://ghcr.io/eyte112/inkpad)
 
-<a href="https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2Feyte112%2Finkpad"><img src="https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg" height="32" alt="Deploy to EdgeOne Pages" /></a>&nbsp;
-<a href="https://deploy.workers.cloudflare.com/?url=https://github.com/eyte112/inkpad"><img src="https://deploy.workers.cloudflare.com/button" height="32" alt="Deploy to Cloudflare Workers" /></a>
-
 [功能特性](#功能特性) · [预览截图](#预览截图) · [快速开始](#快速开始) · [部署方式](#部署方式) · [本地开发](#本地开发)
 
 <a href="./README.en.md">English</a>
@@ -151,7 +148,11 @@ docker restart inkpad
 
 ### 方式二：EdgeOne Pages
 
-点击上方一键部署按钮，或手动操作：
+点击下方按钮一键部署到 EdgeOne Pages：
+
+<a href="https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2Feyte112%2Finkpad" target="_blank" rel="noopener noreferrer"><img src="https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg" height="32" alt="Deploy to EdgeOne Pages" /></a>
+
+或手动操作：
 
 1. Fork 或推送代码到 GitHub
 2. 登录 [EdgeOne Pages 控制台](https://edgeone.ai/pages)，点击「新建项目」，导入 GitHub 仓库
@@ -168,7 +169,11 @@ docker restart inkpad
 
 ### 方式三：Cloudflare Workers
 
-点击上方一键部署按钮，或手动操作：
+点击下方按钮一键部署到 Cloudflare Workers：
+
+<a href="https://deploy.workers.cloudflare.com/?url=https://github.com/eyte112/inkpad" target="_blank" rel="noopener noreferrer"><img src="https://deploy.workers.cloudflare.com/button" height="32" alt="Deploy to Cloudflare Workers" /></a>
+
+或手动操作：
 
 1. 安装 Wrangler CLI 并登录：
    ```bash

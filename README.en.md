@@ -7,9 +7,6 @@
 [![License](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](./LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://ghcr.io/eyte112/inkpad)
 
-<a href="https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2Feyte112%2Finkpad"><img src="https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg" height="32" alt="Deploy to EdgeOne Pages" /></a>&nbsp;
-<a href="https://deploy.workers.cloudflare.com/?url=https://github.com/eyte112/inkpad"><img src="https://deploy.workers.cloudflare.com/button" height="32" alt="Deploy to Cloudflare Workers" /></a>
-
 [Features](#features) · [Screenshots](#screenshots) · [Quick Start](#quick-start) · [Deployment](#deployment) · [Development](#development)
 
 <a href="./README.md">中文文档</a>
@@ -151,7 +148,11 @@ docker restart inkpad
 
 ### Option 2: EdgeOne Pages
 
-Click the one-click deploy button above, or deploy manually:
+Click the button below to deploy to EdgeOne Pages with one click:
+
+<a href="https://edgeone.ai/pages/new?repository-url=https%3A%2F%2Fgithub.com%2Feyte112%2Finkpad" target="_blank" rel="noopener noreferrer"><img src="https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg" height="32" alt="Deploy to EdgeOne Pages" /></a>
+
+Or deploy manually:
 
 1. Fork or push the code to GitHub
 2. Log in to [EdgeOne Pages Console](https://edgeone.ai/pages), click "New Project", and import the GitHub repository
@@ -168,7 +169,11 @@ Click the one-click deploy button above, or deploy manually:
 
 ### Option 3: Cloudflare Workers
 
-Click the one-click deploy button above, or deploy manually:
+Click the button below to deploy to Cloudflare Workers with one click:
+
+<a href="https://deploy.workers.cloudflare.com/?url=https://github.com/eyte112/inkpad" target="_blank" rel="noopener noreferrer"><img src="https://deploy.workers.cloudflare.com/button" height="32" alt="Deploy to Cloudflare Workers" /></a>
+
+Or deploy manually:
 
 1. Install Wrangler CLI and log in:
    ```bash
