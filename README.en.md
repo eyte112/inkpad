@@ -190,19 +190,33 @@ Or deploy manually:
    wrangler kv namespace create KV
    # Note the returned id, e.g.: { id: "xxxxxxxxxxxx" }
    ```
-4. Edit `platforms/cloudflare/wrangler.jsonc` and replace the `id` in `kv_namespaces` with the value from the previous step:
+4. Edit `wrangler.jsonc` in the project root and replace the `id` in `kv_namespaces` with the value from the previous step:
    ```jsonc
    "kv_namespaces": [
      { "binding": "KV", "id": "your-actual-namespace-id" }
    ]
    ```
-5. Deploy from the `platforms/cloudflare/` directory:
+5. Deploy:
    ```bash
-   cd platforms/cloudflare
-   wrangler deploy
+   npx wrangler deploy
    ```
 
-> **Note**: The Cloudflare config file is `wrangler.jsonc` (not `.toml`), located in `platforms/cloudflare/`.
+> **Note**: The Cloudflare config file is `wrangler.jsonc` (not `.toml`) in the project root.
+
+### Option 4: Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Feyte112%2Finkpad)
+
+Or deploy manually:
+
+1. Fork or push the code to GitHub
+2. Log in to [Vercel](https://vercel.com), click "Add New Project", and import the GitHub repository
+3. Create an Upstash Redis database:
+   - In the Vercel project "Storage" tab, click "Create Database" → select "Upstash KV"
+   - Environment variables will be injected automatically (`KV_REST_API_URL`, `KV_REST_API_TOKEN`)
+4. Trigger a redeployment and wait for the build to complete
+
+> **Note**: If configuring Upstash manually, both `KV_REST_API_URL` / `KV_REST_API_TOKEN` and `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` naming conventions are supported.
 
 ## Architecture
 
@@ -213,7 +227,9 @@ functions/     -> Backend handlers (platform-agnostic)
   └── shared/  -> Auth, KV abstraction, unified router
 server/        -> VPS entry (Hono + SQLite)
 platforms/     -> Other platform entries
-  └── cloudflare/  -> Cloudflare Workers entry
+  ├── cloudflare/  -> Cloudflare Workers entry
+  └── vercel/      -> Vercel KV adapter
+api/           -> Vercel Serverless Function entry
 ```
 
 > **KV Abstraction** — Business logic talks to `IKVStore` interface. Platform adapters (EdgeOne KV, SQLite, Cloudflare Workers, etc.) implement it. Add a new platform by implementing the interface + creating an entry file.

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npx esbuild api/handler.ts --bundle --platform=node --format=esm --outfile=api/handler.bundled.js && mv api/handler.bundled.js api/handler.ts && npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/handler" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

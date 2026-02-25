@@ -62,4 +62,8 @@ PROJECT_GUIDE.md
 
 # Cloudflare Workers
 .wrangler/
-  
+
+# Vercel
+.vercel
+.env*.local
+api/handler.js

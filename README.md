@@ -190,19 +190,33 @@ docker restart inkpad
    wrangler kv namespace create KV
    # 记录返回的 id，如：{ id: "xxxxxxxxxxxx" }
    ```
-4. 编辑 `platforms/cloudflare/wrangler.jsonc`，将 `kv_namespaces` 中的 `id` 替换为上一步返回的值：
+4. 编辑根目录 `wrangler.jsonc`，将 `kv_namespaces` 中的 `id` 替换为上一步返回的值：
    ```jsonc
    "kv_namespaces": [
      { "binding": "KV", "id": "你的实际 namespace id" }
    ]
    ```
-5. 从 `platforms/cloudflare/` 目录部署：
+5. 部署：
    ```bash
-   cd platforms/cloudflare
-   wrangler deploy
+   npx wrangler deploy
    ```
 
-> **注意**：Cloudflare Workers 的配置文件是 `wrangler.jsonc`（非 `.toml`），位于 `platforms/cloudflare/` 目录下。
+> **注意**：Cloudflare Workers 的配置文件是根目录下的 `wrangler.jsonc`（非 `.toml`）。
+
+### 方式四：Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Feyte112%2Finkpad)
+
+或手动操作：
+
+1. Fork 或推送代码到 GitHub
+2. 登录 [Vercel 控制台](https://vercel.com)，点击「Add New Project」，导入 GitHub 仓库
+3. 创建 Upstash Redis 数据库：
+   - 在 Vercel 项目「Storage」标签页，点击「Create Database」→ 选择「Upstash KV」
+   - 创建完成后环境变量会自动注入（`KV_REST_API_URL`、`KV_REST_API_TOKEN`）
+4. 触发重新部署，等待构建完成
+
+> **注意**：如果手动配置 Upstash，环境变量名支持 `KV_REST_API_URL` / `KV_REST_API_TOKEN` 或 `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` 两种命名。
 
 ## 项目结构
 
@@ -213,7 +227,9 @@ functions/     -> 后端业务逻辑（平台无关）
   └── shared/  -> 认证、KV 抽象、统一路由器
 server/        -> VPS 入口（Hono + SQLite）
 platforms/     -> 其他平台入口
-  └── cloudflare/  -> Cloudflare Workers 入口
+  ├── cloudflare/  -> Cloudflare Workers 入口
+  └── vercel/      -> Vercel KV 适配器
+api/           -> Vercel Serverless Function 入口
 ```
 
 > **KV 抽象层** — 业务逻辑通过 `IKVStore` 统一接口访问数据。各平台适配器（EdgeOne KV、SQLite、Cloudflare Workers 等）实现该接口。新增平台只需实现接口 + 创建入口文件。
