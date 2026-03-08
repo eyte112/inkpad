@@ -156,6 +156,103 @@ function derToRaw(der: Uint8Array): Uint8Array {
   return raw;
 }
 
+// ============ 纯数学 ECDSA P-256 验证（EdgeOne 兼容） ============
+// EdgeOne 边缘运行时不支持 crypto.subtle.importKey（见 jwt.ts:2）
+// 使用 BigInt 实现椭圆曲线运算，仅依赖 crypto.subtle.digest('SHA-256')
+
+const P256_P = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFFn;
+const P256_N = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551n;
+const P256_GX = 0x6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296n;
+const P256_GY = 0x4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5n;
+const P256_A = P256_P - 3n; // a = -3 mod p
+
+type ECPoint = { x: bigint; y: bigint } | null;
+
+function modInverse(a: bigint, m: bigint): bigint {
+  let [old_r, r] = [((a % m) + m) % m, m];
+  let [old_s, s] = [1n, 0n];
+  while (r !== 0n) {
+    const q = old_r / r;
+    [old_r, r] = [r, old_r - q * r];
+    [old_s, s] = [s, old_s - q * s];
+  }
+  return ((old_s % m) + m) % m;
+}
+
+function ecDouble(pt: ECPoint): ECPoint {
+  if (!pt) return null;
+  const { x, y } = pt;
+  if (y === 0n) return null;
+  const p = P256_P;
+  const lam = ((3n * x * x + P256_A) * modInverse(2n * y, p)) % p;
+  const x3 = ((lam * lam - 2n * x) % p + p) % p;
+  const y3 = ((lam * (x - x3) - y) % p + p) % p;
+  return { x: x3, y: y3 };
+}
+
+function ecAdd(p1: ECPoint, p2: ECPoint): ECPoint {
+  if (!p1) return p2;
+  if (!p2) return p1;
+  if (p1.x === p2.x) {
+    if (p1.y === p2.y) return ecDouble(p1);
+    return null;
+  }
+  const p = P256_P;
+  const lam = ((p2.y - p1.y + p) * modInverse((p2.x - p1.x + p) % p, p)) % p;
+  const x3 = ((lam * lam - p1.x - p2.x) % p + p) % p;
+  const y3 = ((lam * (p1.x - x3 + p) - p1.y + p) % p + p) % p;
+  return { x: x3, y: y3 };
+}
+
+function ecMul(k: bigint, pt: ECPoint): ECPoint {
+  let result: ECPoint = null;
+  let current = pt;
+  k = ((k % P256_N) + P256_N) % P256_N;
+  while (k > 0n) {
+    if (k & 1n) result = ecAdd(result, current);
+    current = ecDouble(current);
+    k >>= 1n;
+  }
+  return result;
+}
+
+function bytesToBigInt(bytes: Uint8Array): bigint {
+  let hex = '';
+  for (const b of bytes) hex += b.toString(16).padStart(2, '0');
+  return hex.length > 0 ? BigInt('0x' + hex) : 0n;
+}
+
+/** 纯数学 ECDSA P-256 签名验证（不依赖 crypto.subtle.importKey/verify） */
+async function ecdsaVerifyP256(
+  publicKey: Uint8Array,  // 65 bytes: 0x04 || x || y
+  rawSig: Uint8Array,     // 64 bytes: r || s
+  data: Uint8Array,       // 待验证数据（将被 SHA-256 哈希）
+): Promise<boolean> {
+  if (publicKey.length !== 65 || publicKey[0] !== 0x04) return false;
+  if (rawSig.length !== 64) return false;
+
+  const qx = bytesToBigInt(publicKey.slice(1, 33));
+  const qy = bytesToBigInt(publicKey.slice(33, 65));
+  const Q: ECPoint = { x: qx, y: qy };
+  const r = bytesToBigInt(rawSig.slice(0, 32));
+  const s = bytesToBigInt(rawSig.slice(32, 64));
+
+  if (r <= 0n || r >= P256_N || s <= 0n || s >= P256_N) return false;
+
+  const hashBuf = await crypto.subtle.digest('SHA-256', data);
+  const z = bytesToBigInt(new Uint8Array(hashBuf));
+
+  const w = modInverse(s, P256_N);
+  const u1 = (z * w) % P256_N;
+  const u2 = (r * w) % P256_N;
+
+  const G: ECPoint = { x: P256_GX, y: P256_GY };
+  const R = ecAdd(ecMul(u1, G), ecMul(u2, Q));
+  if (!R) return false;
+
+  return (R.x % P256_N) === r;
+}
+
 // ============ 公开 API ============
 
 export interface RegistrationOptionsInput {
@@ -191,8 +288,7 @@ export function generateRegistrationOptions(input: RegistrationOptionsInput): Re
     user: { id: base64URLEncode(userId), name: input.userName, displayName: input.userName },
     challenge: base64URLEncode(challenge),
     pubKeyCredParams: [
-      { type: 'public-key', alg: -7 },   // ES256
-      { type: 'public-key', alg: -257 },  // RS256
+      { type: 'public-key', alg: -7 },   // ES256 only — EdgeOne 仅支持 P-256
     ],
     timeout: 60000,
     attestation: 'none',
@@ -267,9 +363,9 @@ export async function verifyRegistrationResponse(input: VerifyRegistrationInput)
     publicKeyBytes.set(x, 1);
     publicKeyBytes.set(y, 1 + x.length);
   } else {
-    // 不支持的算法，但仍然存储原始 COSE key 的 base64
-    // 注册可以通过，但认证时签名验证会失败
-    publicKeyBytes = credentialId; // fallback
+    // 不支持的算法 — 直接拒绝注册，避免存储无效公钥
+    console.error(`Passkey registration rejected: unsupported algorithm kty=${kty} alg=${alg}`);
+    return { verified: false };
   }
 
   return {
@@ -367,22 +463,31 @@ export async function verifyAuthenticationResponse(input: VerifyAuthenticationIn
   signedData.set(new Uint8Array(clientDataHash), authDataBytes.length);
 
   try {
-    // 尝试 ES256 (P-256) 验证
+    // ES256 (P-256) 签名验证 — 兼容 EdgeOne 边缘运行时
     const publicKey = input.credential.publicKey;
-    const key = await crypto.subtle.importKey(
-      'raw',
-      publicKey as any,
-      { name: 'ECDSA', namedCurve: 'P-256' },
-      false,
-      ['verify'],
-    );
     const rawSig = derToRaw(signatureBytes);
-    const valid = await crypto.subtle.verify(
-      { name: 'ECDSA', hash: 'SHA-256' },
-      key,
-      rawSig as any,
-      signedData as any,
-    );
+
+    // 策略 1：尝试 JWK 格式导入（比 raw 格式更兼容）
+    try {
+      const x = publicKey.slice(1, 33);
+      const y = publicKey.slice(33, 65);
+      const jwk = {
+        kty: 'EC', crv: 'P-256',
+        x: base64URLEncode(x), y: base64URLEncode(y),
+      };
+      const key = await crypto.subtle.importKey(
+        'jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify'],
+      );
+      const valid = await crypto.subtle.verify(
+        { name: 'ECDSA', hash: 'SHA-256' }, key, rawSig as any, signedData as any,
+      );
+      return { verified: valid, newCounter: parsed.signCount };
+    } catch (jwkErr) {
+      console.warn('WebAuthn: JWK importKey failed, falling back to pure-math ECDSA:', jwkErr);
+    }
+
+    // 策略 2：纯数学 ECDSA P-256 验证（仅依赖 crypto.subtle.digest）
+    const valid = await ecdsaVerifyP256(publicKey, rawSig, signedData);
     return { verified: valid, newCounter: parsed.signCount };
   } catch (err) {
     console.error('WebAuthn signature verification error:', err);
